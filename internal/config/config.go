@@ -1,4 +1,4 @@
-package main
+package config
 
 import (
 	"flag"
@@ -9,7 +9,7 @@ import (
 )
 
 type HTTPServer struct {
-	Addr string
+	Address string `yaml:"address"`
 }
 
 type Config struct {
@@ -37,7 +37,7 @@ func MustLoad() *Config {
 		}
 	}
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
-		log.Fatal("Config File does not exist: %s", configPath)
+		log.Fatalf("Config file does not exist: %s", configPath)
 		panic("config file does not exist")
 	}
 
