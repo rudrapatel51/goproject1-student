@@ -24,23 +24,23 @@ func main() {
 	router.HandleFunc("POST /api/students", student.New())
 
 	server := &http.Server{
-		Addr:    cfg.HTTPServer.Address, // ✅ correct field
+		Addr:    cfg.HTTPServer.Address,
 		Handler: router,
 	}
 
-	slog.Info("Server Started on", slog.String("address", cfg.HTTPServer.Address)) // ✅ fixed
+	slog.Info("Server Started on", slog.String("address", cfg.HTTPServer.Address))
 
 	done := make(chan os.Signal, 1)
 	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
 	go func() {
 		err := server.ListenAndServe()
-		if err != nil && err != http.ErrServerClosed { // ✅ fixed
+		if err != nil && err != http.ErrServerClosed {
 			log.Fatal("Error starting server:", err)
 		}
 	}()
 
-	<-done // ✅ block until shutdown signal received
+	<-done
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
