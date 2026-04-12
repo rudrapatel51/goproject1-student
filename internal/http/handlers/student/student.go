@@ -14,7 +14,7 @@ import (
 )
 
 // New returns an http.HandlerFunc for creating a student
-func New(studentStorage storage.Storage) http.HandlerFunc {
+func New(studentStorage storage.Storage) http.HandlerFunc { // dependency injection of storage layer
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		var student types.Student

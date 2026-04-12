@@ -27,6 +27,8 @@ func main() {
 	}
 	defer store.Close()
 
+	slog.Info("Connected to Postgres successfully", slog.String("host", cfg.Postgres.Host), slog.Int("port", cfg.Postgres.Port),)
+
 	router := http.NewServeMux()
 	router.HandleFunc("POST /api/students", student.New(store))
 
