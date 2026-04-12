@@ -51,10 +51,7 @@ func New(studentStorage storage.Storage) http.HandlerFunc { // dependency inject
 		student.ID = int(id)
 
 		slog.Info("Student created", slog.Any("student", student))
-
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusCreated)
-		json.NewEncoder(w).Encode(student)
+		response.WriteJson(w, http.StatusCreated, student)
 	}
 }
 
@@ -92,5 +89,87 @@ func GetAll(studentStorage storage.Storage) http.HandlerFunc {
 		}
 
 		response.WriteJson(w, http.StatusOK, students)
+	}
+}
+
+func UpdateById(studentStorage storage.Storage) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Step 1: Parse and validate ID from URL path
+		idStr := r.PathValue("id")
+		id, err := strconv.Atoi(idStr)
+		if err != nil || id <= 0 {
+			response.WriteJson(w, http.StatusBadRequest, response.GeneralError(errors.New("invalid student id")))
+			return
+		}
+
+		// Step 2: Decode JSON body into student struct
+		var student types.Student
+		if err = json.NewDecoder(r.Body).Decode(&student); err != nil {
+			if errors.Is(err, io.EOF) {
+				response.WriteJson(w, http.StatusBadRequest, response.GeneralError(errors.New("empty request body")))
+				return
+			}
+			response.WriteJson(w, http.StatusBadRequest, response.GeneralError(err))
+			return
+		}
+
+		// Step 3: Validate the decoded fields
+		if err = validator.New().Struct(student); err != nil {
+			validateErrs := err.(validator.ValidationErrors)
+			response.WriteJson(w, http.StatusBadRequest, response.ValidationError(validateErrs))
+			return
+		}
+
+		// Step 4: Call storage to update
+		if err = studentStorage.UpdateById(id, student.Name, student.Email, student.Age); err != nil {
+			if errors.Is(err, storage.ErrStudentNotFound) {
+				response.WriteJson(w, http.StatusNotFound, response.GeneralError(errors.New("student not found")))
+				return
+			}
+			if errors.Is(err, storage.ErrStudentEmailAlreadyExists) {
+				response.WriteJson(w, http.StatusConflict, response.GeneralError(errors.New("student with this email already exists")))
+				return
+			}
+			slog.Error("Failed to update student", slog.Int("id", id), slog.String("error", err.Error()))
+			response.WriteJson(w, http.StatusInternalServerError, response.GeneralError(errors.New("failed to update student")))
+			return
+		}
+
+		// Step 5: Fetch the updated record from DB and return it
+		updated, err := studentStorage.GetStudentByID(id)
+		if err != nil {
+			slog.Error("Failed to fetch updated student", slog.Int("id", id), slog.String("error", err.Error()))
+			response.WriteJson(w, http.StatusInternalServerError, response.GeneralError(errors.New("failed to fetch updated student")))
+			return
+		}
+
+		slog.Info("Student updated", slog.Int("id", id))
+		response.WriteJson(w, http.StatusOK, updated)
+	}
+}
+
+func DeleteById(studentStorage storage.Storage) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Step 1: Parse and validate ID from URL path
+		idStr := r.PathValue("id")
+		id, err := strconv.Atoi(idStr)
+		if err != nil || id <= 0 {
+			response.WriteJson(w, http.StatusBadRequest, response.GeneralError(errors.New("invalid student id")))
+			return
+		}
+
+		// Step 2: Call storage to delete
+		if err = studentStorage.DeleteById(id); err != nil {
+			if errors.Is(err, storage.ErrStudentNotFound) {
+				response.WriteJson(w, http.StatusNotFound, response.GeneralError(errors.New("student not found")))
+				return
+			}
+			slog.Error("Failed to delete student", slog.Int("id", id), slog.String("error", err.Error()))
+			response.WriteJson(w, http.StatusInternalServerError, response.GeneralError(errors.New("failed to delete student")))
+			return
+		}
+
+		slog.Info("Student deleted", slog.Int("id", id))
+		response.WriteJson(w, http.StatusOK, response.Response{Status: response.StatusOk, Error: ""})
 	}
 }

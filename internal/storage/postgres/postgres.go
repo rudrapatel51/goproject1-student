@@ -129,3 +129,37 @@ ORDER BY id;`
 
 	return students, nil
 }
+
+
+func (s *Storage) UpdateById(id int, name string, email string, age int) error {
+	const query = `
+UPDATE students
+SET name = $1, email = $2, age = $3
+WHERE id = $4;`
+	result, err := s.db.Exec(context.Background(), query, name, email, age, id)
+	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" && pgErr.ConstraintName == "students_email_key" {
+			return storage.ErrStudentEmailAlreadyExists
+		}
+		return fmt.Errorf("update student: %w", err)
+	}
+	if result.RowsAffected() == 0 {
+		return storage.ErrStudentNotFound
+	}
+	return nil
+}
+
+func (s *Storage) DeleteById(id int) error {
+	const query = `
+DELETE FROM students
+WHERE id = $1;`
+	result, err := s.db.Exec(context.Background(), query, id)
+	if err != nil {
+		return fmt.Errorf("delete student: %w", err)
+	}
+	if result.RowsAffected() == 0 {
+		return storage.ErrStudentNotFound
+	}
+	return nil
+}
