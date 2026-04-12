@@ -39,6 +39,10 @@ func New(studentStorage storage.Storage) http.HandlerFunc {
 
 		id, err := studentStorage.CreateStudent(student.Name, student.Email, student.Age)
 		if err != nil {
+			if errors.Is(err, storage.ErrStudentEmailAlreadyExists) {
+				response.WriteJson(w, http.StatusConflict, response.GeneralError(errors.New("student with this email already exists")))
+				return
+			}
 			slog.Error("Failed to create student", slog.String("error", err.Error()))
 			response.WriteJson(w, http.StatusInternalServerError, response.GeneralError(err))
 			return

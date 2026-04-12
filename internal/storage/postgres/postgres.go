@@ -2,10 +2,13 @@ package postgres
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rudrapatel51/goproject1-student/internal/config"
+	"github.com/rudrapatel51/goproject1-student/internal/storage"
 )
 
 type Storage struct {
@@ -68,6 +71,10 @@ RETURNING id;`
 
 	var id int64
 	if err := s.db.QueryRow(context.Background(), query, name, email, age).Scan(&id); err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" && pgErr.ConstraintName == "students_email_key" {
+			return 0, storage.ErrStudentEmailAlreadyExists
+		}
 		return 0, fmt.Errorf("insert student: %w", err)
 	}
 
