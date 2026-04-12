@@ -13,6 +13,7 @@ import (
 
 	"github.com/rudrapatel51/goproject1-student/internal/config"
 	"github.com/rudrapatel51/goproject1-student/internal/http/handlers/student"
+	"github.com/rudrapatel51/goproject1-student/internal/storage/postgres"
 )
 
 func main() {
@@ -20,8 +21,14 @@ func main() {
 
 	cfg := config.MustLoad()
 
+	store, err := postgres.New(context.Background(), cfg)
+	if err != nil {
+		log.Fatal("Failed to connect postgres:", err)
+	}
+	defer store.Close()
+
 	router := http.NewServeMux()
-	router.HandleFunc("POST /api/students", student.New())
+	router.HandleFunc("POST /api/students", student.New(store))
 
 	server := &http.Server{
 		Addr:    cfg.HTTPServer.Address,

@@ -12,10 +12,20 @@ type HTTPServer struct {
 	Address string `yaml:"address"`
 }
 
+type Postgres struct {
+	Host     string `yaml:"host" env-required:"true"`
+	Port     int    `yaml:"port" env-default:"5432"`
+	User     string `yaml:"user" env-required:"true"`
+	Password string `yaml:"password" env-required:"true"`
+	DBName   string `yaml:"db_name" env-required:"true"`
+	SSLMode  string `yaml:"ssl_mode" env-default:"disable"`
+	MaxConns int32  `yaml:"max_conns" env-default:"10"`
+}
+
 type Config struct {
-	Env         string `yaml:"env"`
-	StoragePath string `yaml:"storage_path"`
-	HTTPServer  `yaml:"http_server"`
+	Env        string `yaml:"env"`
+	HTTPServer `yaml:"http_server"`
+	Postgres   `yaml:"postgres"`
 }
 
 func MustLoad() *Config {

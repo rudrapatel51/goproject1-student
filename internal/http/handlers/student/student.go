@@ -7,21 +7,17 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/rudrapatel51/goproject1-student/internal/utils/response"
 	"github.com/go-playground/validator/v10"
+	"github.com/rudrapatel51/goproject1-student/internal/storage"
+	"github.com/rudrapatel51/goproject1-student/internal/types"
+	"github.com/rudrapatel51/goproject1-student/internal/utils/response"
 )
 
-type Student struct {
-	ID   int    `json:"id"`
-	Name string `json:"name"`
-	Age  int    `json:"age"`
-}
-
 // New returns an http.HandlerFunc for creating a student
-func New() http.HandlerFunc {
+func New(studentStorage storage.Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
-		var student Student
+		var student types.Student
 
 		err := json.NewDecoder(r.Body).Decode(&student) // decode request body into student struct
 		if err != nil {
@@ -41,7 +37,13 @@ func New() http.HandlerFunc {
 			return
 		}
 
-
+		id, err := studentStorage.CreateStudent(student.Name, student.Email, student.Age)
+		if err != nil {
+			slog.Error("Failed to create student", slog.String("error", err.Error()))
+			response.WriteJson(w, http.StatusInternalServerError, response.GeneralError(err))
+			return
+		}
+		student.ID = int(id)
 
 		slog.Info("Student created", slog.Any("student", student))
 
