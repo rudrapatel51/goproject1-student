@@ -13,6 +13,7 @@ import (
 
 	"github.com/rudrapatel51/goproject1-student/internal/config"
 	"github.com/rudrapatel51/goproject1-student/internal/http/handlers/student"
+	"github.com/rudrapatel51/goproject1-student/internal/http/middleware"
 	"github.com/rudrapatel51/goproject1-student/internal/storage/postgres"
 )
 
@@ -31,10 +32,12 @@ func main() {
 
 	router := http.NewServeMux()
 	router.HandleFunc("POST /api/students", student.New(store))
+	router.HandleFunc("GET /api/students/{id}", student.GetById(store))
+	router.HandleFunc("GET /api/students", student.GetAll(store))
 
 	server := &http.Server{
 		Addr:    cfg.HTTPServer.Address,
-		Handler: router,
+		Handler: middleware.Logger(router),
 	}
 
 	slog.Info("Server Started on", slog.String("address", cfg.HTTPServer.Address))

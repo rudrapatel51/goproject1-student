@@ -5,10 +5,12 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rudrapatel51/goproject1-student/internal/config"
 	"github.com/rudrapatel51/goproject1-student/internal/storage"
+	"github.com/rudrapatel51/goproject1-student/internal/types"
 )
 
 type Storage struct {
@@ -79,4 +81,51 @@ RETURNING id;`
 	}
 
 	return id, nil
+}
+
+
+func (s *Storage) GetStudentByID(id int) (types.Student, error) {
+	const query = `
+SELECT id, name, email, age, created_at
+FROM students
+WHERE id = $1;`
+
+	var student types.Student
+	err := s.db.QueryRow(context.Background(), query, id).Scan(&student.ID, &student.Name, &student.Email, &student.Age, &student.CreatedAt)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return types.Student{}, storage.ErrStudentNotFound
+		}
+		return types.Student{}, fmt.Errorf("query student by id: %w", err)
+	}
+
+	return student, nil
+}
+
+func (s *Storage) GetAllStudents() ([]types.Student, error) {
+	const query = `
+SELECT id, name, email, age, created_at
+FROM students
+ORDER BY id;`
+
+	rows, err := s.db.Query(context.Background(), query)
+	if err != nil {
+		return nil, fmt.Errorf("query all students: %w", err)
+	}
+	defer rows.Close()
+
+	students := make([]types.Student, 0)
+	for rows.Next() {
+		var student types.Student
+		if err = rows.Scan(&student.ID, &student.Name, &student.Email, &student.Age, &student.CreatedAt); err != nil {
+			return nil, fmt.Errorf("scan student row: %w", err)
+		}
+		students = append(students, student)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate student rows: %w", err)
+	}
+
+	return students, nil
 }

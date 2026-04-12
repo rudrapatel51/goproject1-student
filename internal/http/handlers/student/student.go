@@ -6,6 +6,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"strconv"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/rudrapatel51/goproject1-student/internal/storage"
@@ -54,5 +55,42 @@ func New(studentStorage storage.Storage) http.HandlerFunc { // dependency inject
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
 		json.NewEncoder(w).Encode(student)
+	}
+}
+
+func GetById(studentStorage storage.Storage) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		idStr := r.PathValue("id")
+		id, err := strconv.Atoi(idStr)
+		if err != nil || id <= 0 {
+			response.WriteJson(w, http.StatusBadRequest, response.GeneralError(errors.New("invalid student id")))
+			return
+		}
+
+		student, err := studentStorage.GetStudentByID(id)
+		if err != nil {
+			if errors.Is(err, storage.ErrStudentNotFound) {
+				response.WriteJson(w, http.StatusNotFound, response.GeneralError(errors.New("student not found")))
+				return
+			}
+			slog.Error("Failed to get student by id", slog.Int("id", id), slog.String("error", err.Error()))
+			response.WriteJson(w, http.StatusInternalServerError, response.GeneralError(errors.New("failed to fetch student")))
+			return
+		}
+
+		response.WriteJson(w, http.StatusOK, student)
+	}
+}
+
+func GetAll(studentStorage storage.Storage) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		students, err := studentStorage.GetAllStudents()
+		if err != nil {
+			slog.Error("Failed to get all students", slog.String("error", err.Error()))
+			response.WriteJson(w, http.StatusInternalServerError, response.GeneralError(errors.New("failed to fetch students")))
+			return
+		}
+
+		response.WriteJson(w, http.StatusOK, students)
 	}
 }
